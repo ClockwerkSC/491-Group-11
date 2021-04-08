@@ -1,6 +1,8 @@
 import pygame
 from touch import MainTouch, PartialTouch
 import speech_recognition as sr
+import RPi.GPIO as GPIO
+import time
 
 
 class Functions():
@@ -10,6 +12,7 @@ class Functions():
         self.canvas = pygame.Surface((self.DISPLAY_W, self.DISPLAY_H))
         self.window = pygame.display.set_mode((self.DISPLAY_W,self.DISPLAY_H))
         self.background = pygame.image.load('real_background.png')
+        self.clock = pygame.time.Clock()
         self.running = True
         self.main_running = True
         self.frequency_running = True
@@ -24,8 +27,12 @@ class Functions():
         self.person_flag = False
         self.audio_flag = False
 
-        self.keywords = ['hello', 'stop', 'wait', 'help', 'joe',]
+        self.keywords = ['hello', 'stop', 'wait', 'help', 'excuse me', "howdy", "John", "sir", "ma'am", "would you like"]
         self.detected_keywords = []
+        
+        self.pin = 26
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(self.pin, GPIO.OUT)
 
     def check_events(self, touchcontrol = False):
         for event in pygame.event.get():
@@ -115,12 +122,22 @@ class Functions():
                 self.frequency_running = False            
 
 
+    def word_vibrate(self):
+        for i in range(0, 3):
+            GPIO.output(self.pin, GPIO.HIGH)
+            print("high")
+            time.sleep(.25)
+            GPIO.output(self.pin,GPIO.LOW)
+            print("low")
+            time.sleep(.25)
+
     def callback(self, recognizer, audio):
     # received audio data, now we'll recognize it using Google Speech Recognition
         try:
         # for testing purposes, we're just using the default API key
         # to use another API key, use `r.recognize_google(audio, key="GOOGLE_SPEECH_RECOGNITION_API_KEY")`
         # instead of `r.recognize_google(audio)`
+            
             recognized_audio = recognizer.recognize_google(audio)
             print(recognized_audio)
             for keyword in self.keywords:
@@ -128,7 +145,7 @@ class Functions():
                     print("Key word is " + keyword)
                     self.detected_keywords.append(keyword)
                     self.last_updated_time =  pygame.time.get_ticks()
-            
+                    self.word_vibrate()
         except sr.UnknownValueError:
             print("Google Speech Recognition could not understand audio")
         except sr.RequestError as e:
@@ -144,8 +161,10 @@ class Functions():
             r.adjust_for_ambient_noise(source, duration = 0.5) 
         stop_listening = r.listen_in_background(m, self.callback)
         while self.word_running:
+        
             self.check_events(self.touch_word)
-            self.canvas.blit(self.background, (0,0))
+            pygame.draw.rect(self.canvas, (0,0,0), (0,0, 800, 480))
+            #self.canvas.blit(self.background, (0,0))
             if self.detected_keywords:
                 for index, keyword in enumerate(self.detected_keywords):
                     self.draw_text(self.canvas, "Detected Keywords:", 25, 400, 150, 'center')
